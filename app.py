@@ -19,21 +19,39 @@ MODEL_URL = (
 #
 
 # --- 1. SETUP & HELPER FUNCTIONS ---
+# --- 1. SETUP & HELPER FUNCTIONS ---
 st.set_page_config(page_title="Hit Predictor AI", page_icon="🎵", layout="wide")
 
 @st.cache_resource
 def load_resources():
     # --- MODEL ---
+    # 1. FIX: Use the "Raw" URL so you get the file, not the GitHub HTML page
+    raw_model_url = (
+        "https://github.com/lucytheboss/Sonic-Analytics-Hit-Predictor/raw/main/models/popularity_prediction_model.pkl"
+    )
+
+    # 2. FIX: Ensure the directory exists
+    MODEL_DIR.mkdir(parents=True, exist_ok=True)
+
+    # 3. FIX: robust download logic
     if not MODEL_PATH.exists():
         with st.spinner("📦 Downloading ML model..."):
-            MODEL_DIR.mkdir(parents=True, exist_ok=True)
-            r = requests.get(MODEL_URL)
-            if r.status_code != 200:
-                st.error("❌ Failed to download model")
+            try:
+                r = requests.get(raw_model_url)
+                r.raise_for_status() # Raise error if download fails
+                MODEL_PATH.write_bytes(r.content)
+            except Exception as e:
+                st.error(f"❌ Failed to download model: {e}")
                 st.stop()
-            MODEL_PATH.write_bytes(r.content)
 
-    pkg = joblib.load(MODEL_PATH)
+    # 4. FIX: Use absolute PATH object (MODEL_PATH), not a string
+    try:
+        pkg = joblib.load(MODEL_PATH)
+    except Exception as e:
+        # If the file exists but is corrupt (e.g., previous bad download), delete it
+        st.error(f"❌ Model corrupted. Deleting and retrying... Error: {e}")
+        MODEL_PATH.unlink() 
+        st.stop() # Stop execution so user can refresh to trigger download again
 
     # --- DATA ---
     if DATA_PATH.exists():
