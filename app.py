@@ -9,16 +9,25 @@ import librosa
 # --- 1. SETUP & HELPER FUNCTIONS ---
 st.set_page_config(page_title="Hit Predictor AI", page_icon="🎵", layout="wide")
 
+MODEL_PATH = Path("models/popularity_prediction_model.pkl")
+DATA_PATH = Path("data/final_data.csv")
+
+
 @st.cache_resource
-def load_resources():
-    pkg = joblib.load("models/popularity_prediction_model.pkl")
-    try:
-        df = pd.read_csv("data/final_data.csv")
-    except:
-        # Fallback if file not found (for testing)
-        st.error("⚠️ 'spotify_data.csv' not found. Please export your df_final to CSV.")
-        df = pd.DataFrame()
-    return pkg, df
+def load_model():
+    if not MODEL_PATH.exists():
+        raise FileNotFoundError(
+            "Model file not found. Run training locally to generate the .pkl file."
+        )
+    return joblib.load(MODEL_PATH)
+
+
+@st.cache_data
+def load_data():
+    if not DATA_PATH.exists():
+        return pd.DataFrame()
+    return pd.read_csv(DATA_PATH)
+
 
 def extract_audio_features(uploaded_file):
     """
