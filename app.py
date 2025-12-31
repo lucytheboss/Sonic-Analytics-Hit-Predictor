@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -6,12 +8,12 @@ import plotly.graph_objects as go
 import joblib
 import librosa
 
-# --- 1. SETUP & HELPER FUNCTIONS ---
-st.set_page_config(page_title="Hit Predictor AI", page_icon="🎵", layout="wide")
-
 MODEL_PATH = Path("models/popularity_prediction_model.pkl")
 DATA_PATH = Path("data/final_data.csv")
 
+
+# --- 1. SETUP & HELPER FUNCTIONS ---
+st.set_page_config(page_title="Hit Predictor AI", page_icon="🎵", layout="wide")
 
 @st.cache_resource
 def load_model():
@@ -56,12 +58,25 @@ def extract_audio_features(uploaded_file):
     return bpm, brightness, rhythm
 
 # Load everything
-pkg, df_data = load_resources()
+pkg = load_model()
+df_data = load_data()
+
+if pkg is None:
+    st.warning(
+        "⚠️ Model file not found.\n\n"
+        "This Streamlit demo shows the interface only.\n"
+        "To enable predictions, train the model locally "
+        "and place it in `models/`."
+    )
+    st.stop()
+
+# Unpack model components
 model_pop = pkg['model']
 model_genre = pkg['genre_model']
 scaler = pkg['scaler']
 feat_cols = pkg['features']
 num_cols = pkg['num_cols']
+
 
 st.title("🎵 Sonic Analytics: Hit Predictor")
 st.markdown("Analyze market trends or predict the success of your new demo.")
