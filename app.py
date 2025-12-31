@@ -4,21 +4,46 @@ import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 import joblib
+import requests
+from pathlib import Path
 import librosa
+
+BASE_DIR = Path(__file__).resolve().parent
+MODEL_DIR = BASE_DIR / "models"
+MODEL_PATH = MODEL_DIR / "popularity_prediction_model.pkl"
+DATA_PATH = BASE_DIR / "data" / "final_data.csv"
+
+MODEL_URL = (
+    "https://github.com/lucytheboss/Sonic-Analytics-Hit-Predictor/blob/main/models/popularity_prediction_model.pkl"
+)
+#
 
 # --- 1. SETUP & HELPER FUNCTIONS ---
 st.set_page_config(page_title="Hit Predictor AI", page_icon="🎵", layout="wide")
 
 @st.cache_resource
 def load_resources():
-    pkg = joblib.load("models/popularity_prediction_model.pkl")
-    try:
-        df = pd.read_csv("data/final_data.csv")
-    except:
-        # Fallback if file not found (for testing)
-        st.error("⚠️ 'spotify_data.csv' not found. Please export your df_final to CSV.")
+    # --- MODEL ---
+    if not MODEL_PATH.exists():
+        with st.spinner("📦 Downloading ML model..."):
+            MODEL_DIR.mkdir(parents=True, exist_ok=True)
+            r = requests.get(MODEL_URL)
+            if r.status_code != 200:
+                st.error("❌ Failed to download model")
+                st.stop()
+            MODEL_PATH.write_bytes(r.content)
+
+    pkg = joblib.load(MODEL_PATH)
+
+    # --- DATA ---
+    if DATA_PATH.exists():
+        df = pd.read_csv(DATA_PATH)
+    else:
+        st.warning("⚠️ final_data.csv not found — running in demo mode")
         df = pd.DataFrame()
+
     return pkg, df
+
 
 def extract_audio_features(uploaded_file):
     """
@@ -48,11 +73,11 @@ def extract_audio_features(uploaded_file):
 
 # Load everything
 pkg, df_data = load_resources()
-model_pop = pkg['model']
-model_genre = pkg['genre_model']
-scaler = pkg['scaler']
-feat_cols = pkg['features']
-num_cols = pkg['num_cols']
+
+model_pop = pkg["model"]
+model_genre = pkg["genre_model"]
+scaler = pkg["scaler"]
+feat_cols = pkg["features"]
 
 st.title("🎵 Sonic Analytics: Hit Predictor")
 st.markdown("Analyze market trends or predict the success of your new demo.")
@@ -99,12 +124,12 @@ with tab1:
             # 1. Album Cover (Main Image)
             # Use 'cover_art_url' as found in your CSV
             if 'cover_art_url' in df_data.columns and pd.notna(selected_song['cover_art_url']):
-                st.image(selected_song['cover_art_url'], use_container_width=True, caption="Album Art")
+                st.image(selected_song['cover_art_url'], width='stretch', caption=selected_song['track_name'])
             
             # 2. Artist Image (Below Album)
             # 'artist_image_url' exists in your list, so this should work now
             if 'artist_image_url' in df_data.columns and pd.notna(selected_song['artist_image_url']):
-                st.image(selected_song['artist_image_url'], use_container_width=True, caption=selected_song['artist_name'])
+                st.image(selected_song['artist_image_url'], width='stretch', caption=selected_song['artist_name'])
         
         
     with col_stats:
