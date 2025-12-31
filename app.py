@@ -322,15 +322,20 @@ with tab2:
             # If the model pkg doesn't have recipes, use these defaults.
             # Brightness: Higher = More Treble/Air. Rhythm: Higher = Punchier/Heavier Drums.
             default_recipes = {
-                'Pop': {'brightness': 3200, 'rhythm_strength': 0.65},
-                'Hip-Hop': {'brightness': 2500, 'rhythm_strength': 0.85},
-                'Rock': {'brightness': 3000, 'rhythm_strength': 0.75},
-                'Electronic': {'brightness': 3500, 'rhythm_strength': 0.80},
-                'R&B': {'brightness': 2200, 'rhythm_strength': 0.55},
-                'Country': {'brightness': 2800, 'rhythm_strength': 0.45},
-                'Jazz': {'brightness': 2000, 'rhythm_strength': 0.40},
-                'Classical': {'brightness': 1500, 'rhythm_strength': 0.30},
-                'Metal': {'brightness': 3300, 'rhythm_strength': 0.90}
+                'Alternative':       {'bpm': 112, 'brightness': 2102, 'rhythm_strength': 0.66},
+                'Christian':         {'bpm': 111, 'brightness': 2428, 'rhythm_strength': 0.70},
+                'Christmas: Pop':    {'bpm': 124, 'brightness': 2858, 'rhythm_strength': 0.81},
+                'Country':           {'bpm': 118, 'brightness': 2165, 'rhythm_strength': 0.67},
+                'Dance':             {'bpm': 124, 'brightness': 2648, 'rhythm_strength': 0.71},
+                'Hard Rock':         {'bpm': 119, 'brightness': 2581, 'rhythm_strength': 0.62},
+                'Hip-Hop/Rap':       {'bpm': 115, 'brightness': 2331, 'rhythm_strength': 0.88},
+                'Holiday':           {'bpm': 111, 'brightness': 2005, 'rhythm_strength': 0.64},
+                'Metal':             {'bpm': 119, 'brightness': 2761, 'rhythm_strength': 0.59},
+                'Pop':               {'bpm': 117, 'brightness': 2444, 'rhythm_strength': 0.76},
+                'R&B/Soul':          {'bpm': 120, 'brightness': 2305, 'rhythm_strength': 0.76},
+                'Rock':              {'bpm': 120, 'brightness': 2216, 'rhythm_strength': 0.67},
+                'Singer/Songwriter': {'bpm': 108, 'brightness': 2152, 'rhythm_strength': 0.71},
+                'Soundtrack':        {'bpm': 118, 'brightness': 2381, 'rhythm_strength': 0.74},
             }
 
             # Try to get recipes from the model first, otherwise use our defaults
