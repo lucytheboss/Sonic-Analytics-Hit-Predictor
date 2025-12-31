@@ -65,29 +65,71 @@ def load_resources():
 
 def extract_audio_features(uploaded_file):
     """
-    Extracts BPM, Brightness, and Rhythm Strength from an MP3/WAV file.
+    Extracts features and generates a Time-Series Graph.
     """
-    # Load audio (Librosa handles the decoding)
-    y, sr = librosa.load(uploaded_file, duration=30) # Limit to 30s for speed
+    # 1. Load Audio
+    y, sr = librosa.load(uploaded_file, duration=None) 
     
-    # 1. BPM (Tempo)
+    # 2. Extract Scalar Features
+    duration_sec = librosa.get_duration(y=y, sr=sr)
+    
     tempo, _ = librosa.beat.beat_track(y=y, sr=sr)
     bpm = float(tempo)
     
-    # 2. Brightness (Spectral Centroid)
-    # This correlates with "timbre" (Higher = Brighter/More Treble)
     spectral_centroids = librosa.feature.spectral_centroid(y=y, sr=sr)[0]
     brightness = float(np.mean(spectral_centroids))
     
-    # 3. Rhythm Strength (Onset Strength)
-    # A proxy for how "punchy" or rhythmic the track is (0.0 to 1.0 approx)
     onset_env = librosa.onset.onset_strength(y=y, sr=sr)
     rhythm = float(np.mean(onset_env))
-    
-    # Normalize Rhythm to 0-1 scale visually (heuristic)
     rhythm = min(rhythm, 2.0) / 2.0 
     
-    return bpm, brightness, rhythm
+    # 3. Generate Time-Series Graph Data (Downsampled for Speed)
+    # Calculate RMS (Loudness/Energy)
+    rms = librosa.feature.rms(y=y)[0]
+    
+    # Normalize for plotting (0-1 scale)
+    times = librosa.times_like(rms, sr=sr)
+    norm_rms = (rms - np.min(rms)) / (np.max(rms) - np.min(rms))
+    
+    # Align centroid shape with RMS
+    cent_aligned = librosa.feature.spectral_centroid(y=y, sr=sr)[0]
+    # Handle slight shape mismatches due to frame centering
+    min_len = min(len(times), len(cent_aligned))
+    times = times[:min_len]
+    norm_rms = norm_rms[:min_len]
+    cent = cent_aligned[:min_len]
+    norm_cent = (cent - np.min(cent)) / (np.max(cent) - np.min(cent))
+    
+    # Reduce point count for Plotly performance (1 point every 0.5s approx)
+    hop = int(len(times) / (duration_sec * 2)) if duration_sec > 0 else 1
+    hop = max(1, hop) # Ensure hop is at least 1
+    
+    fig_timeline = go.Figure()
+    
+    fig_timeline.add_trace(go.Scatter(
+        x=times[::hop], y=norm_rms[::hop],
+        mode='lines', name='Energy (Loudness)',
+        line=dict(color='#1DB954', width=2), # Spotify Green
+        fill='tozeroy', fillcolor='rgba(29, 185, 84, 0.1)'
+    ))
+    
+    fig_timeline.add_trace(go.Scatter(
+        x=times[::hop], y=norm_cent[::hop],
+        mode='lines', name='Brightness (Timbre)',
+        line=dict(color='#1E90FF', width=2) # Dodger Blue
+    ))
+    
+    fig_timeline.update_layout(
+        title="📈 Feature Evolution: Energy & Brightness over Time",
+        xaxis_title="Time (seconds)",
+        yaxis_title="Normalized Intensity (0-1)",
+        height=300,
+        margin=dict(l=0, r=0, t=40, b=0),
+        legend=dict(orientation="h", y=1.1)
+    )
+
+    # Return 5 values now (added fig_timeline)
+    return bpm, brightness, rhythm, duration_sec, fig_timeline
 
 # Load everything
 pkg, df_data = load_resources()
@@ -200,127 +242,145 @@ with tab1:
             st.info(f"Analysis: This track is **{'Brighter' if song_vals[1] > avg_vals[1] else 'Darker'}** and has **{'Stronger' if song_vals[2] > avg_vals[2] else 'Weaker'}** rhythm than the average {genre} song.")
 
 
+# ==========================================
+# TAB 2: AI DEMO RATER (Prediction)
+# ==========================================
 with tab2:
     st.header("Upload Demo for Analysis")
-    st.markdown("Upload your audio file. Our AI will extract the sonic features, while you provide the context (Artist fame).")
+    st.markdown("Upload your audio file. Our AI will extract the sonic features, while you provide the context.")
     
     col_upload, col_context = st.columns([1, 1])
     
-    # Defaults
-    audio_bpm, audio_bright, audio_rhythm = 120.0, 3000.0, 0.5
+    # --- 1. INITIALIZE SESSION STATE ---
+    # We use session_state so data persists when you click buttons
+    if 'audio_bpm' not in st.session_state: st.session_state['audio_bpm'] = 120.0
+    if 'audio_bright' not in st.session_state: st.session_state['audio_bright'] = 3000.0
+    if 'audio_rhythm' not in st.session_state: st.session_state['audio_rhythm'] = 0.5
+    if 'audio_duration' not in st.session_state: st.session_state['audio_duration'] = 180.0
+    if 'feature_fig' not in st.session_state: st.session_state['feature_fig'] = None
+    if 'has_audio' not in st.session_state: st.session_state['has_audio'] = False
     
+    # --- 2. UPLOAD & EXTRACT UI ---
     with col_upload:
         uploaded_file = st.file_uploader("Upload MP3/WAV", type=['mp3', 'wav'])
         
         if uploaded_file is not None:
             st.audio(uploaded_file, format='audio/mp3')
-            with st.spinner("Extracting features with Librosa..."):
-                try:
-                    # Run Librosa Extraction
-                    audio_bpm, audio_bright, audio_rhythm = extract_audio_features(uploaded_file)
-                    st.success("Audio Features Extracted!")
-                    st.write(f"**Detected BPM:** {int(audio_bpm)}")
-                    st.write(f"**Detected Brightness:** {int(audio_bright)}")
-                    st.write(f"**Detected Rhythm:** {audio_rhythm:.2f}")
-                except Exception as e:
-                    st.error(f"Error reading audio: {e}")
+            
+            # Button to trigger costly extraction
+            if st.button("🔍 Extract Audio Features"):
+                with st.spinner("Analyzing full track structure (this may take a moment)..."):
+                    try:
+                        # Extract 5 values: BPM, Brightness, Rhythm, Duration, and Graph Figure
+                        bpm, bright, rhythm, dur, fig = extract_audio_features(uploaded_file)
+                        
+                        # Store in Session State
+                        st.session_state['audio_bpm'] = bpm
+                        st.session_state['audio_bright'] = bright
+                        st.session_state['audio_rhythm'] = rhythm
+                        st.session_state['audio_duration'] = dur
+                        st.session_state['feature_fig'] = fig
+                        st.session_state['has_audio'] = True
+                        
+                        st.success("Features Extracted Successfully!")
+                    except Exception as e:
+                        st.error(f"Error reading audio: {e}")
 
+            # Display Extracted Metrics
+            if st.session_state['has_audio']:
+                mins = int(st.session_state['audio_duration'] // 60)
+                secs = int(st.session_state['audio_duration'] % 60)
+                
+                c1, c2 = st.columns(2)
+                c1.write(f"**BPM:** {int(st.session_state['audio_bpm'])}")
+                c1.write(f"**Brightness:** {int(st.session_state['audio_bright'])}")
+                c2.write(f"**Rhythm:** {st.session_state['audio_rhythm']:.2f}")
+                c2.write(f"**Duration:** {mins}:{secs:02d}")
+                
     with col_context:
         st.subheader("Market Context")
         st.markdown("*The model needs to know who is releasing this track.*")
-        
-        # User must provide these since the audio file doesn't have them
         artist_pop = st.slider("Artist Current Popularity", 0, 100, 50)
         prev_pop = st.slider("Previous Track Success", 0, 100, 50)
 
-    # --- PREDICTION BUTTON ---
-    # --- PREDICTION BUTTON ---
+    # --- 3. DISPLAY TIME-SERIES GRAPH ---
+    if st.session_state['has_audio'] and st.session_state['feature_fig']:
+        st.divider()
+        st.plotly_chart(st.session_state['feature_fig'], use_container_width=True)
+
+    # --- 4. PREDICTION LOGIC ---
     if st.button("🔮 Predict Success"):
-        if uploaded_file is None:
-            st.warning("Please upload an audio file first.")
+        if not st.session_state['has_audio']:
+            st.warning("Please upload audio and click 'Extract Audio Features' first.")
         else:
-            # 1. Prepare Audio Data for Scaling
-            # The scaler expects exactly these 5 columns in this order:
-            # ['bpm', 'energy', 'brightness', 'noisiness', 'rhythm_strength']
+            # Retrieve values from state
+            bpm = st.session_state['audio_bpm']
+            bright = st.session_state['audio_bright']
+            rhythm = st.session_state['audio_rhythm']
+            duration_sec = st.session_state['audio_duration']
             
-            # Since we only extracted 3 features, we use averages/defaults for the others
-            # (In a real app, you would extract these with Librosa too)
-            defaults = {
-                'energy': 0.6,      # Default mid-range energy
-                'noisiness': 0.05   # Default low noisiness
-            }
+            # A. Prepare Data for Model
+            defaults = {'energy': 0.6, 'noisiness': 0.05}
             
-            # Create the DataFrame matching the scaler's training data
+            # Dataframe must match the scaler's training structure exactly
             audio_features_df = pd.DataFrame([[
-                audio_bpm, 
-                defaults['energy'], 
-                audio_bright, 
-                defaults['noisiness'], 
-                audio_rhythm
+                bpm, defaults['energy'], bright, defaults['noisiness'], rhythm
             ]], columns=['bpm', 'energy', 'brightness', 'noisiness', 'rhythm_strength'])
             
-            # 2. Scale the Audio Features
+            # B. Scale & Predict Genre
             try:
                 scaled_audio = scaler.transform(audio_features_df)
-                # scaled_audio is now a numpy array of shape (1, 5)
+                pred_genre = model_genre.predict(scaled_audio)[0]
             except Exception as e:
-                st.error(f"Scaling Error: {e}")
+                st.error(f"Model Error: {e}")
                 st.stop()
             
-            # 3. Predict Genre
-            # The Genre Model uses these 5 scaled audio features
-            pred_genre = model_genre.predict(scaled_audio)[0]
-            
-            # 4. Predict Popularity (Fix for 'const' error)
-            
-            # A. Create the Template Row based on your saved features
+            # C. Predict Popularity
+            # Create a blank row with all model columns (initialized to 0)
             input_row = pd.DataFrame(0, index=[0], columns=feat_cols)
             
-            # B. Fill in the Data
+            # Fill Context Data
             if 'prev_track_popularity' in input_row.columns: 
                 input_row['prev_track_popularity'] = prev_pop
             
-            if 'bpm' in input_row.columns: input_row['bpm'] = scaled_audio[0][0]
-            if 'energy' in input_row.columns: input_row['energy'] = scaled_audio[0][1]
-            if 'brightness' in input_row.columns: input_row['brightness'] = scaled_audio[0][2]
-            if 'noisiness' in input_row.columns: input_row['noisiness'] = scaled_audio[0][3]
-            if 'rhythm_strength' in input_row.columns: input_row['rhythm_strength'] = scaled_audio[0][4]
+            # Fill Scaled Audio Data
+            cols_map = {
+                'bpm': scaled_audio[0][0], 
+                'energy': scaled_audio[0][1],
+                'brightness': scaled_audio[0][2], 
+                'noisiness': scaled_audio[0][3],
+                'rhythm_strength': scaled_audio[0][4]
+            }
+            for col, val in cols_map.items():
+                if col in input_row.columns: input_row[col] = val
                 
-            # C. Fill the Genre Dummy
+            # Fill Genre Dummy Variable
             if pred_genre in input_row.columns:
                 input_row[pred_genre] = 1
             elif f"genre_{pred_genre}" in input_row.columns:
                 input_row[f"genre_{pred_genre}"] = 1
             
-            # --- CRITICAL FIX: DROP CONST ---
-            # The error explicitly said 'const' was unseen, so we remove it.
-            if 'const' in input_row.columns:
+            # Remove 'const' if present (Statsmodels artifact)
+            if 'const' in input_row.columns: 
                 input_row = input_row.drop(columns=['const'])
             
-            # D. Run Prediction
-            try:
-                score = model_pop.predict(input_row)[0]
-                score = np.clip(score, 0, 100)
-            except Exception as e:
-                st.error(f"Prediction Error: {e}")
-                score = 0
+            # Run Prediction
+            score = model_pop.predict(input_row)[0]
+            score = np.clip(score, 0, 100)
             
-            # 5. Display Results
+            # D. Display Results
             st.divider()
-            r1, r2, r3 = st.columns(3)
-            r1.metric("Predicted Genre", pred_genre)
-            r2.metric("Success Score", f"{int(score)}/100")
-            r3.metric("BPM", int(audio_bpm))
+            c1, c2, c3 = st.columns(3)
+            c1.metric("Predicted Genre", pred_genre)
+            c2.metric("Success Score", f"{int(score)}/100")
+            c3.metric("Duration", f"{int(duration_sec // 60)}:{int(duration_sec % 60):02d}")
             
-            # ... [Keep your existing code above this line] ...
-
-            # 6. Recommendation Engine
-            st.divider()
-            st.subheader(f"👨‍⚕️ Song Doctor Recommendation")
-
-            # --- 1. DEFINE IDEAL RECIPES (Fallback) ---
-            # If the model pkg doesn't have recipes, use these defaults.
-            # Brightness: Higher = More Treble/Air. Rhythm: Higher = Punchier/Heavier Drums.
+            # ==========================================
+            # 5. SONG DOCTOR (Detailed Analysis)
+            # ==========================================
+            st.subheader(f"👨‍⚕️ Song Doctor: {pred_genre} Analysis")
+            
+            # --- CUSTOM RECIPES (From your dataset) ---
             default_recipes = {
                 'Alternative':       {'bpm': 112, 'brightness': 2102, 'rhythm_strength': 0.66},
                 'Christian':         {'bpm': 111, 'brightness': 2428, 'rhythm_strength': 0.70},
@@ -337,37 +397,80 @@ with tab2:
                 'Singer/Songwriter': {'bpm': 108, 'brightness': 2152, 'rhythm_strength': 0.71},
                 'Soundtrack':        {'bpm': 118, 'brightness': 2381, 'rhythm_strength': 0.74},
             }
+            
+            # A. Determine Target Values
+            target_bpm = 120
+            target_bright = 3000
+            target_rhythm = 0.5
+            target_duration = 210000 # Default 3:30 in ms
+            source_type = "Baseline"
+            
+            # 1. Use Recipe if available
+            if pred_genre in default_recipes:
+                recipe = default_recipes[pred_genre]
+                target_bpm = recipe['bpm']
+                target_bright = recipe['brightness']
+                target_rhythm = recipe['rhythm_strength']
+                source_type = "Ideal Recipe"
 
-            # Try to get recipes from the model first, otherwise use our defaults
-            recipes = pkg.get('genre_recipes', default_recipes)
-            target_vals = recipes.get(pred_genre)
+            # 2. Use Data for Duration (Dynamic Average)
+            if not df_data.empty and 'duration_ms' in df_data.columns:
+                if pred_genre in df_data['genre'].values:
+                    target_duration = df_data[df_data['genre'] == pred_genre]['duration_ms'].mean()
 
-            # --- 2. ANALYZE & DIAGNOSE ---
-            if target_vals:
-                target_bright = target_vals.get('brightness', 3000)
-                target_rhythm = target_vals.get('rhythm_strength', 0.5)
+            st.caption(f"Comparing against: {source_type} for {pred_genre}")
+
+            # B. Plot Radar Comparison
+            norm_max = {'bpm': 200, 'bright': 5000, 'rhythm': 1.0}
+            
+            fig_doc = go.Figure()
+            
+            # User Data Trace
+            fig_doc.add_trace(go.Scatterpolar(
+                r=[bpm/norm_max['bpm'], bright/norm_max['bright'], rhythm/norm_max['rhythm']],
+                theta=['BPM', 'Brightness', 'Rhythm'],
+                fill='toself', name='Your Demo', line_color='#1DB954'
+            ))
+            
+            # Target Data Trace
+            fig_doc.add_trace(go.Scatterpolar(
+                r=[target_bpm/norm_max['bpm'], target_bright/norm_max['bright'], target_rhythm/norm_max['rhythm']],
+                theta=['BPM', 'Brightness', 'Rhythm'],
+                fill='toself', name=f'{pred_genre} Target', line_color='tomato', opacity=0.6
+            ))
+            
+            fig_doc.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 1])), height=400, title="Sonic Fingerprint vs. Target")
+            st.plotly_chart(fig_doc, use_container_width=True)
+            
+            # C. Generate Advice
+            advice = []
+            
+            # 1. Duration Check
+            duration_ms = duration_sec * 1000
+            dur_diff = duration_ms - target_duration
+            
+            if dur_diff > 45000: # 45s longer
+                advice.append(f"⏱️ **Too Long:** Your track is {int(dur_diff/1000)}s longer than the {pred_genre} average. Consider a 'Radio Edit' for streaming.")
+            elif dur_diff < -45000: # 45s shorter
+                advice.append(f"⏱️ **Too Short:** This is significantly shorter than the {pred_genre} average. Ensure the arrangement feels complete.")
+            
+            # 2. Brightness Check
+            if bright < target_bright * 0.85:
+                advice.append(f"🔉 **Too Dark:** Your track is muddy compared to typical {pred_genre}. Boost high-end EQ (Treble).")
+            elif bright > target_bright * 1.15:
+                advice.append(f"🔊 **Too Bright:** Your track is harsh. Try cutting some high frequencies or using warmer instrumentation.")
                 
-                advice = []
+            # 3. Rhythm Check
+            if rhythm < target_rhythm * 0.85:
+                advice.append(f"🥁 **Low Energy:** Rhythm strength is weak for {pred_genre}. Make the drums punchier or add percussion.")
+            elif rhythm > target_rhythm * 1.25:
+                advice.append(f"💥 **Too Aggressive:** Rhythm is very intense. Ensure it fits the {pred_genre} vibe.")
                 
-                # Brightness Analysis (Allow 20% variance)
-                if audio_bright < target_bright * 0.8:
-                    advice.append(f"🔉 **Too Dark for {pred_genre}:** Try boosting high frequencies (treble) or using brighter instrumentation.")
-                elif audio_bright > target_bright * 1.2:
-                    advice.append(f"🔊 **Too Bright for {pred_genre}:** It sounds a bit harsh. Try cutting some high-end EQ or warming up the mix.")
-                    
-                # Rhythm Analysis (Allow 20% variance)
-                if audio_rhythm < target_rhythm * 0.8:
-                    advice.append(f"🥁 **Weak Rhythm for {pred_genre}:** The track needs more punch! Try compressing the drums or adding percussion layers.")
-                elif audio_rhythm > target_rhythm * 1.3: # slightly looser upper bound
-                    advice.append(f"💥 **Over-Aggressive:** The rhythm might be too intense for typical {pred_genre}. Consider softening the transients.")
-                
-                # Display Output
-                if not advice:
-                    st.balloons()
-                    st.success(f"✅ **Perfect Health!** The sonic profile matches the {pred_genre} standard perfectly.")
-                else:
-                    st.warning("⚠️ **Prescription Needed:**")
-                    for tip in advice:
-                        st.markdown(f"- {tip}")
+            # Final Output
+            if not advice:
+                st.balloons()
+                st.success(f"✅ **Perfect Fit!** Your demo hits the {pred_genre} sonic sweet spot perfectly!")
             else:
-                st.info(f"No specific 'sonic recipe' available for {pred_genre}, but the stats look valid.")
+                st.warning("⚠️ **Doctor's Orders:**")
+                for tip in advice:
+                    st.write(tip)
