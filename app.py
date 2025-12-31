@@ -402,7 +402,7 @@ with tab2:
             target_bpm = 120
             target_bright = 3000
             target_rhythm = 0.5
-            target_duration = 210000 # Default 3:30 in ms
+            target_duration = 210000
             source_type = "Baseline"
             
             # 1. Use Recipe if available
@@ -425,18 +425,17 @@ with tab2:
             
             fig_doc = go.Figure()
             
-            # User Data Trace
             fig_doc.add_trace(go.Scatterpolar(
                 r=[bpm/norm_max['bpm'], bright/norm_max['bright'], rhythm/norm_max['rhythm']],
                 theta=['BPM', 'Brightness', 'Rhythm'],
-                fill='toself', name='Your Demo', line_color='#1DB954'
+                fill='toself', name='Your Demo', line_color="#A4EDBD"
             ))
             
             # Target Data Trace
             fig_doc.add_trace(go.Scatterpolar(
                 r=[target_bpm/norm_max['bpm'], target_bright/norm_max['bright'], target_rhythm/norm_max['rhythm']],
                 theta=['BPM', 'Brightness', 'Rhythm'],
-                fill='toself', name=f'{pred_genre} Target', line_color='tomato', opacity=0.6
+                fill='toself', name=f'{pred_genre} Target', line_color="#EDA4B6", opacity=0.6
             ))
             
             fig_doc.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 1])), height=400, title="Sonic Fingerprint vs. Target")
