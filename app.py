@@ -312,26 +312,57 @@ with tab2:
             r2.metric("Success Score", f"{int(score)}/100")
             r3.metric("BPM", int(audio_bpm))
             
+            # ... [Keep your existing code above this line] ...
+
             # 6. Recommendation Engine
+            st.divider()
             st.subheader(f"👨‍⚕️ Song Doctor Recommendation")
-            
-            if 'genre_recipes' in pkg:
-                recipe = pkg['genre_recipes'].get(pred_genre)
-                if recipe:
-                    target_bright = recipe.get('brightness', 3000)
-                    target_rhythm = recipe.get('rhythm_strength', 0.5)
+
+            # --- 1. DEFINE IDEAL RECIPES (Fallback) ---
+            # If the model pkg doesn't have recipes, use these defaults.
+            # Brightness: Higher = More Treble/Air. Rhythm: Higher = Punchier/Heavier Drums.
+            default_recipes = {
+                'Pop': {'brightness': 3200, 'rhythm_strength': 0.65},
+                'Hip-Hop': {'brightness': 2500, 'rhythm_strength': 0.85},
+                'Rock': {'brightness': 3000, 'rhythm_strength': 0.75},
+                'Electronic': {'brightness': 3500, 'rhythm_strength': 0.80},
+                'R&B': {'brightness': 2200, 'rhythm_strength': 0.55},
+                'Country': {'brightness': 2800, 'rhythm_strength': 0.45},
+                'Jazz': {'brightness': 2000, 'rhythm_strength': 0.40},
+                'Classical': {'brightness': 1500, 'rhythm_strength': 0.30},
+                'Metal': {'brightness': 3300, 'rhythm_strength': 0.90}
+            }
+
+            # Try to get recipes from the model first, otherwise use our defaults
+            recipes = pkg.get('genre_recipes', default_recipes)
+            target_vals = recipes.get(pred_genre)
+
+            # --- 2. ANALYZE & DIAGNOSE ---
+            if target_vals:
+                target_bright = target_vals.get('brightness', 3000)
+                target_rhythm = target_vals.get('rhythm_strength', 0.5)
+                
+                advice = []
+                
+                # Brightness Analysis (Allow 20% variance)
+                if audio_bright < target_bright * 0.8:
+                    advice.append(f"🔉 **Too Dark for {pred_genre}:** Try boosting high frequencies (treble) or using brighter instrumentation.")
+                elif audio_bright > target_bright * 1.2:
+                    advice.append(f"🔊 **Too Bright for {pred_genre}:** It sounds a bit harsh. Try cutting some high-end EQ or warming up the mix.")
                     
-                    advice = []
-                    if audio_bright < target_bright * 0.8:
-                        advice.append("🔊 **Too Dark:** Increase high-end frequencies (treble).")
-                    elif audio_bright > target_bright * 1.2:
-                        advice.append("🔉 **Too Bright:** Reduce harsh high frequencies.")
-                        
-                    if audio_rhythm < target_rhythm * 0.8:
-                        advice.append("🥁 **Weak Rhythm:** Make the drums punchier.")
-                    
-                    if not advice:
-                        st.success("✅ Audio features align perfectly with this genre!")
-                    else:
-                        for tip in advice:
-                            st.warning(tip)
+                # Rhythm Analysis (Allow 20% variance)
+                if audio_rhythm < target_rhythm * 0.8:
+                    advice.append(f"🥁 **Weak Rhythm for {pred_genre}:** The track needs more punch! Try compressing the drums or adding percussion layers.")
+                elif audio_rhythm > target_rhythm * 1.3: # slightly looser upper bound
+                    advice.append(f"💥 **Over-Aggressive:** The rhythm might be too intense for typical {pred_genre}. Consider softening the transients.")
+                
+                # Display Output
+                if not advice:
+                    st.balloons()
+                    st.success(f"✅ **Perfect Health!** The sonic profile matches the {pred_genre} standard perfectly.")
+                else:
+                    st.warning("⚠️ **Prescription Needed:**")
+                    for tip in advice:
+                        st.markdown(f"- {tip}")
+            else:
+                st.info(f"No specific 'sonic recipe' available for {pred_genre}, but the stats look valid.")
