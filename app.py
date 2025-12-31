@@ -1,5 +1,3 @@
-from pathlib import Path
-
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -8,28 +6,19 @@ import plotly.graph_objects as go
 import joblib
 import librosa
 
-MODEL_PATH = Path("models/popularity_prediction_model.pkl")
-DATA_PATH = Path("data/final_data.csv")
-
-
 # --- 1. SETUP & HELPER FUNCTIONS ---
 st.set_page_config(page_title="Hit Predictor AI", page_icon="🎵", layout="wide")
 
 @st.cache_resource
-def load_model():
-    if not MODEL_PATH.exists():
-        raise FileNotFoundError(
-            "Model file not found. Run training locally to generate the .pkl file."
-        )
-    return joblib.load(MODEL_PATH)
-
-
-@st.cache_data
-def load_data():
-    if not DATA_PATH.exists():
-        return pd.DataFrame()
-    return pd.read_csv(DATA_PATH)
-
+def load_resources():
+    pkg = joblib.load("models/popularity_prediction_model.pkl")
+    try:
+        df = pd.read_csv("data/final_data.csv")
+    except:
+        # Fallback if file not found (for testing)
+        st.error("⚠️ 'spotify_data.csv' not found. Please export your df_final to CSV.")
+        df = pd.DataFrame()
+    return pkg, df
 
 def extract_audio_features(uploaded_file):
     """
@@ -58,25 +47,12 @@ def extract_audio_features(uploaded_file):
     return bpm, brightness, rhythm
 
 # Load everything
-pkg = load_model()
-df_data = load_data()
-
-if pkg is None:
-    st.warning(
-        "⚠️ Model file not found.\n\n"
-        "This Streamlit demo shows the interface only.\n"
-        "To enable predictions, train the model locally "
-        "and place it in `models/`."
-    )
-    st.stop()
-
-# Unpack model components
+pkg, df_data = load_resources()
 model_pop = pkg['model']
 model_genre = pkg['genre_model']
 scaler = pkg['scaler']
 feat_cols = pkg['features']
 num_cols = pkg['num_cols']
-
 
 st.title("🎵 Sonic Analytics: Hit Predictor")
 st.markdown("Analyze market trends or predict the success of your new demo.")
