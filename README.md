@@ -4,6 +4,8 @@
 
 🔗 **Check it out [HERE](https://sonic-analytics-hit-predictor.streamlit.app)**
 
+![](images/analytic_report_screenshot.png)
+
 <h2>📊 Market Analyzer</h2>
 <p align="center">
   <img src="images/app_market_analyzer.png" width="90%">
