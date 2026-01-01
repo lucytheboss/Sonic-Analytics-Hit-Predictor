@@ -110,7 +110,7 @@ We trained a Machine Learning model to classify tracks into genres based *only* 
     * **Dance**: Defined by `Brightness > 3123` and `Rhythm Strength > 2.2`.
     * **Acoustic/Folk**: Defined by `Energy < 0.4` and `Brightness < 2000`.
 
-![Genre Effect](images/genre_effect_plot.png)
+![Genre Effect](images/genre_audio_cluster.png)
      
 #### Interpretation
 The model proves that genres are not just marketing labels but **quantifiable sonic formulas**. This validates the "Doctor's Orders" feature in our app: we can mathematically detect if a track fits the "Sonic Norm" of its intended genre.
