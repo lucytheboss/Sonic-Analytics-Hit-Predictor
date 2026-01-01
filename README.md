@@ -23,6 +23,7 @@
 ├── data/
 │   ├── apple_music_dataset.csv          # Raw data
 │   └── final_data.csv                   # Processed data with audio features
+├── ANALYTIC_REPORT.md
 └── README.md              # Project documentation
 ```
 
@@ -35,12 +36,12 @@
 - APIs: Spotify Web API (for feature enrichment)
 
 ## 📊 Analytic Report
-For a deep dive into the statistical analysis, hypothesis testing (e.g., "The Fame Effect"), and model performance underlying this project, please refer to the [Analytic Report]().
+For a deep dive into the statistical analysis, hypothesis testing (e.g., "The Fame Effect"), and model performance underlying this project, please refer to the [Analytic Report](./ANALYTIC_REPORT.md).
 
 ## ⚙️ Installation & Usage
 1. **Clone the repository**
 ```Bash
-git clone [https://github.com/your-username/Sonic-Analytics-Hit-Predictor.git](https://github.com/your-username/Sonic-Analytics-Hit-Predictor.git)
+git clone [https://github.com/lucytheboss/Sonic-Analytics-Hit-Predictor.git](https://github.com/lucytheboss/Sonic-Analytics-Hit-Predictor.git)
 cd Sonic-Analytics-Hit-Predictor
 ```
 
