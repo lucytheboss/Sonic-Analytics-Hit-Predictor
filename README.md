@@ -2,9 +2,9 @@
 
 **Hit Predictor AI** is a data-driven application designed to assist music producers and artists in evaluating the potential popularity of their tracks. By analyzing audio features and artist metrics, the app predicts a "Popularity Score" and provides actionable feedback ("Doctor's Orders") to help optimize tracks for commercial success.
 
-[📊 Market Analyzer](images/app_market_analyzer.png)
-[👩‍⚕️ Song Doctor](images/app_songdoctor_1.png)
-[👩‍⚕️ Song Doctor](images/app_songdoctor_2.png)
+![📊 Market Analyzer](images/app_market_analyzer.png)
+![👩‍⚕️ Song Doctor](images/app_songdoctor_1.png)
+![👩‍⚕️ Song Doctor](images/app_songdoctor_2.png)
 
 🔗 **Check it out [HERE](https://sonic-analytics-hit-predictor.streamlit.app)**
 
