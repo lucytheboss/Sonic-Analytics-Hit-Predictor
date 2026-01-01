@@ -4,8 +4,6 @@
 
 🔗 **Check it out [HERE](https://sonic-analytics-hit-predictor.streamlit.app)**
 
-![](images/analytic_report_screenshot.png)
-
 <h2>📊 Market Analyzer</h2>
 <p align="center">
   <img src="images/app_market_analyzer.png" width="90%">
@@ -62,6 +60,8 @@
 
 ## 📊 Analytic Report
 For a deep dive into the statistical analysis, hypothesis testing (e.g., "The Fame Effect"), and model performance underlying this project, please refer to the [Analytic Report](./ANALYTIC_REPORT.md).
+
+![](images/analytic_report_screenshot.png)
 
 ## ⚙️ Installation & Usage
 1. **Clone the repository**
