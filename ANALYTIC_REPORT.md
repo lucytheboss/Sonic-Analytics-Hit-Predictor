@@ -101,8 +101,6 @@ The ANOVA test returns a p-value of **0.00000**, confirming that **genre signifi
 ### Analysis 4: Sonic Fingerprinting ($H_0$: Genres are distinct audio clusters)
 We trained a Machine Learning model to classify tracks into genres based *only* on their audio waveforms, without metadata.
 
-![Confusion Matrix](images/confusion_matrix.png)
-
 * **Model**: Random Forest Classifier & Decision Tree.
 * **Input Features**: `BPM`, `Energy`, `Brightness` (Spectral Centroid), `Rhythm Strength`.
 
@@ -112,6 +110,8 @@ We trained a Machine Learning model to classify tracks into genres based *only* 
     * **Dance**: Defined by `Brightness > 3123` and `Rhythm Strength > 2.2`.
     * **Acoustic/Folk**: Defined by `Energy < 0.4` and `Brightness < 2000`.
 
+
+     
 #### Interpretation
 The model proves that genres are not just marketing labels but **quantifiable sonic formulas**. This validates the "Doctor's Orders" feature in our app: we can mathematically detect if a track fits the "Sonic Norm" of its intended genre.
 
@@ -129,8 +129,11 @@ To predict the remaining variance, we trained a **Random Forest** model using th
 * **Inputs**: BPM, Energy, Brightness, Noisiness, Rhythm Strength, Artist Popularity, Genre.
 * **Target**: Track Popularity Score.
 
+
 ### Classification Performance
 We also classified tracks into genres to establish "Sonic Baselines." The model's ability to distinguish genres based purely on audio features is visualized below:
+
+![Classification Matrix](images/classification_matrix.png)
 
 
 ### Application: "Doctor's Orders"
