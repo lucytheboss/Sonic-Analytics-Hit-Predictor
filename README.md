@@ -2,6 +2,8 @@
 
 **Hit Predictor AI** is a data-driven application designed to assist music producers and artists in evaluating the potential popularity of their tracks. By analyzing audio features and artist metrics, the app predicts a "Popularity Score" and provides actionable feedback ("Doctor's Orders") to help optimize tracks for commercial success.
 
+🔗 **Check it out [HERE](https://sonic-analytics-hit-predictor.streamlit.app)**
+
 ## 🚀 Features
 
 * **Hit Prediction Engine**: Uses a Machine Learning model (Random Forest) to predict a song's popularity score (0-100) based on audio features and artist fame.
